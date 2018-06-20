@@ -1,6 +1,14 @@
 import tweepy, praw, os, requests
 from HTMLParser import HTMLParser
 
+def substring_indexes(substring, string):
+    last_found = -1
+    while True:
+        last_found = string.find(substring, last_found + 1)
+        if last_found == -1:
+            break
+        yield last_found
+
 #HTML Parser for Tweet Text/Reddit Title
 h = HTMLParser()
 
@@ -46,13 +54,25 @@ for t in recent_tweets:
         if len(steamLinks) > 0:
             for url in steamLinks:
                 r = requests.get(url).content
-                baseIndex = r.index('<h2 class="large_title"')
-                startIndex = r.index('>', baseIndex) + 1
-                endIndex = r.index('<', startIndex)
-                title = r[startIndex:endIndex]
+                titleBaseIndex = r.index('<h2 class="large_title"')
+                titleStartIndex = r.index('>', titleBaseIndex) + 1
+                titleEndIndex = r.index('<', titleStartIndex)
+                title = r[titleStartIndex:titleEndIndex]
                 if ("PC 1.0 Update" in title or "Dev Letter" in title or "Dev Blog" in title or "Patch Notes" in title) and not any(url in l for l in postedLinks):
-                    subreddit.submit(title, url=url).flair.select("ba18c8f4-14b8-11e7-a6c6-0e11d8c4f614", text=None)
                     writeLinkLog.write(url)
+                    video_indexes = list(substring_indexes("dynamiclink_box", r))
+                    if len(video_indexes) > 0:
+                        video_comment = "Youtube videos in this announcement:\n\n"
+                        for i in video_indexes:
+                            linkStartIndex = r.index("&quot;", i) + 6
+                            linkEndIndex = r.index("&quot;", linkStartIndex)
+                            link = "https://www.youtube.com/watch?v=" + r[linkStartIndex:linkEndIndex]
+                            linkTitleStartIndex = r.index('<\/span>', linkEndIndex) + 8
+                            linkTitleEndIndex = r.index("&nbsp;", linkTitleStartIndex)
+                            linkTitle = r[linkTitleStartIndex:linkTitleEndIndex]
+                            video_comment += "[" + linkTitle + "]" + "(" + link + ")\n\n"
+                    post = subreddit.submit(title, url=url).flair.select("ba18c8f4-14b8-11e7-a6c6-0e11d8c4f614", text=None)
+                    post.reply(video_comment)
         elif "fix" in recent_tweet:
             if not any(recent_tweet_id in s for s in posted):
                 subreddit.submit(recent_tweet, url=recent_tweet_url).flair.select("ba18c8f4-14b8-11e7-a6c6-0e11d8c4f614", text=None)
