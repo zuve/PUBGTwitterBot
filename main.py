@@ -61,7 +61,7 @@ for t in recent_tweets:
                 titleEndIndex = r.index('<', titleStartIndex)
                 title = r[titleStartIndex:titleEndIndex]
                 if ("PC 1.0 Update" in title or "Dev Letter" in title or "Dev Blog" in title or "Patch Notes" in title) and not any(url in l for l in postedLinks):
-                    writeLinkLog.write(url)
+                    writeLinkLog.write(url + "\n")
                     video_indexes = list(substring_indexes("dynamiclink_box", r))
                     transcription_comment = "Transcription of post for those unable to view - \n" + md(str(body_from_post(r))).replace("![]", "\n\n[Image]").replace(" *", "*").replace("***", "**\n*")
                     for i in video_indexes:
