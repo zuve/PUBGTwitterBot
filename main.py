@@ -1,5 +1,4 @@
 import tweepy, praw, os, requests
-from HTMLParser import HTMLParser
 
 def substring_indexes(substring, string):
     last_found = -1
@@ -8,9 +7,6 @@ def substring_indexes(substring, string):
         if last_found == -1:
             break
         yield last_found
-
-#HTML Parser for Tweet Text/Reddit Title
-h = HTMLParser()
 
 #Logging variables
 writeTweetLog = open("log.txt", "a")
@@ -73,9 +69,5 @@ for t in recent_tweets:
                             video_comment += "[" + linkTitle + "]" + "(" + link + ")\n\n"
                     post = subreddit.submit(title, url=url).flair.select("ba18c8f4-14b8-11e7-a6c6-0e11d8c4f614", text=None)
                     post.reply(video_comment)
-        elif "fix" in recent_tweet:
-            if not any(recent_tweet_id in s for s in posted):
-                subreddit.submit(recent_tweet, url=recent_tweet_url).flair.select("ba18c8f4-14b8-11e7-a6c6-0e11d8c4f614", text=None)
-                writeTweetLog.write(recent_tweet_id + "\n")
 writeTweetLog.close()
 writeLinkLog.close()
