@@ -25,7 +25,6 @@ readLinkLog = open("linkLog.txt", "r")
 
 postedLinks = [link.rstrip("\n") for link in readLinkLog]
 
-readTweetLog.close()
 readLinkLog.close()
 
 #Twitter variables
