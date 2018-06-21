@@ -1,4 +1,8 @@
 import tweepy, praw, os, requests
+from bs4 import BeautifulSoup
+from bs4.element import Comment
+from HTMLParser import HTMLParser
+from markdownify import markdownify as md
 
 def substring_indexes(substring, string):
     last_found = -1
@@ -7,6 +11,13 @@ def substring_indexes(substring, string):
         if last_found == -1:
             break
         yield last_found
+
+def body_from_post(html):
+    soup = BeautifulSoup(html, 'html.parser')
+    texts = soup.find("div", {"class": "announcement_body group_body_links"})
+    return texts
+
+h = HTMLParser()
 
 #Logging variables
 writeTweetLog = open("log.txt", "a")
@@ -38,7 +49,7 @@ REDDIT_CLIENT_SECRET = os.environ["PUBGBOT_REDDIT_CLIENT_SECRET"]
 REDDIT_USERNAME = os.environ["REDDIT_USERNAME"]
 REDDIT_PASSWORD = os.environ["REDDIT_PASSWORD"]
 reddit = praw.Reddit(client_id=REDDIT_CLIENT_ID, client_secret=REDDIT_CLIENT_SECRET, password=REDDIT_PASSWORD, user_agent="PUBG Twitter Bot 0.1", username=REDDIT_USERNAME)
-subreddit = reddit.subreddit("PUBATTLEGROUNDS")
+subreddit = reddit.subreddit("ZUVETEST")
 
 for t in recent_tweets:
     recent_tweet = h.unescape(t.full_text)
@@ -54,20 +65,27 @@ for t in recent_tweets:
                 titleStartIndex = r.index('>', titleBaseIndex) + 1
                 titleEndIndex = r.index('<', titleStartIndex)
                 title = r[titleStartIndex:titleEndIndex]
-                if ("PC 1.0 Update" in title or "Dev Letter" in title or "Dev Blog" in title or "Patch Notes" in title) and not any(url in l for l in postedLinks):
-                    writeLinkLog.write(url)
-                    video_indexes = list(substring_indexes("dynamiclink_box", r))
-                    if len(video_indexes) > 0:
-                        video_comment = "Youtube videos in this announcement:\n\n"
-                        for i in video_indexes:
-                            linkStartIndex = r.index("&quot;", i) + 6
-                            linkEndIndex = r.index("&quot;", linkStartIndex)
-                            link = "https://www.youtube.com/watch?v=" + r[linkStartIndex:linkEndIndex]
-                            linkTitleStartIndex = r.index('<\/span>', linkEndIndex) + 8
-                            linkTitleEndIndex = r.index("&nbsp;", linkTitleStartIndex)
-                            linkTitle = r[linkTitleStartIndex:linkTitleEndIndex]
-                            video_comment += "[" + linkTitle + "]" + "(" + link + ")\n\n"
-                    post = subreddit.submit(title, url=url).flair.select("ba18c8f4-14b8-11e7-a6c6-0e11d8c4f614", text=None)
-                    post.reply(video_comment)
+                #if ("PC 1.0 Update" in title or "Dev Letter" in title or "Dev Blog" in title or "Patch Notes" in title) and not any(url in l for l in postedLinks):
+                    #writeLinkLog.write(url)
+                video_indexes = list(substring_indexes("dynamiclink_box", r))
+                transcription_comment = text_content = md(str(body_from_post(r))).replace("![]", "\n\n[Image]").replace(" *", "*").replace("***", "**\n*")
+                for i in video_indexes:
+                    linkStartIndex = r.index("&quot;", i) + 6
+                    linkEndIndex = r.index("&quot;", linkStartIndex)
+                    video_id = r[linkStartIndex:linkEndIndex]
+                    link = "https://www.youtube.com/watch?v=" + video_id
+                    linkTitleStartIndex = r.index('<\/span>', linkEndIndex) + 8
+                    linkTitleEndIndex = r.index("&nbsp;", linkTitleStartIndex)
+                    linkTitle = r[linkTitleStartIndex:linkTitleEndIndex]
+                    transcription_comment = transcription_comment.replace("<" + "https://youtu.be/" + video_id + ">", "VIDEO - [" + linkTitle + "]" + "(" + link +")")
+                post = subreddit.submit(title, url=url)#.flair.select("ba18c8f4-14b8-11e7-a6c6-0e11d8c4f614", text=None)
+                chars = len(transcription_comment)
+                comment = post
+                while chars > 10000:
+                    cutoffIndex = transcription_comment.rfind("\n", 0, 10001)
+                    comment = post.reply(transcription_comment[:cutoffIndex])
+                    transcription_comment = transcription_comment[cutoffIndex:]
+                    chars = len(transcription_comment)
+                comment.reply(transcription_comment)
 writeTweetLog.close()
 writeLinkLog.close()
